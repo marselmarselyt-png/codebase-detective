@@ -10,6 +10,16 @@ actually exist, and reports what it knows — and what it does not.
 Works with opencode, Claude Code, and any agent that can load a `SKILL.md`.
 Python 3 standard library only — no `pip install`, nothing added to your repo.
 
+```bash
+# install (opencode, all projects)
+git clone https://github.com/marselmarselyt-png/codebase-detective.git \
+  ~/.config/opencode/skills/codebase-detective
+```
+
+**Requirements:** Python 3.9+. **31+ automated tests.** **MIT.**
+
+**[Step-by-step install and first run →](docs/getting-started.md)**
+
 ---
 
 ## Why this exists
@@ -43,15 +53,26 @@ Scan project -> Map dependencies -> Investigate bug -> Analyse risk
 
 ## Install
 
-**opencode**
+> Full walkthrough with real output: **[docs/getting-started.md](docs/getting-started.md)**
+
+**Requirements:** Python 3.9+. Nothing else. No `pip install`.
+
+### Step 1 — clone
+
+**opencode, all projects**
 
 ```bash
 git clone https://github.com/marselmarselyt-png/codebase-detective.git \
   ~/.config/opencode/skills/codebase-detective
 ```
 
-Or copy the folder to `.opencode/skills/codebase-detective` in a project for
-project-scoped use. Restart opencode to load it.
+**opencode, one project**
+
+```bash
+cd /path/to/your/project
+git clone https://github.com/marselmarselyt-png/codebase-detective.git \
+  .opencode/skills/codebase-detective
+```
 
 **Claude Code**
 
@@ -60,12 +81,60 @@ git clone https://github.com/marselmarselyt-png/codebase-detective.git \
   ~/.claude/skills/codebase-detective
 ```
 
-## Use
+**No git?** Download the zip, extract it, and rename the folder to
+`codebase-detective` in the directory above.
 
-Ask for an investigation, or invoke the skill explicitly:
+### Step 2 — restart and verify
 
-> "Gold customers stopped receiving their 5% discount. A `POST /checkout` with
-> `"tier": "gold"` comes back as `STANDARD`. Investigate."
+Restart opencode (skills load at startup), then:
+
+```bash
+ls ~/.config/opencode/skills/codebase-detective/SKILL.md
+```
+
+Or ask the agent `What skills are available?` — `codebase-detective` should be
+listed.
+
+### Step 3 — practise on the bundled broken project
+
+```bash
+cd ~/.config/opencode/skills/codebase-detective
+
+# what is this project, and what can I run?
+python3 scripts/map_project.py --root tests/fixture_repo
+
+# are the tests green? (real exit code, never a guess)
+python3 scripts/test_probe.py --root tests/fixture_repo --run \
+  --cmd "python3 -m unittest discover -s tests -t ."
+
+# follow the bug across files
+python3 scripts/trace_symbol.py --root tests/fixture_repo --symbol TIER_FIELD
+
+# what breaks if I change this file?
+python3 scripts/impact.py --root tests/fixture_repo --files shopcart/api.py
+```
+
+The fixture is green in its unit tests and still broken in production — you will
+see the failing assertion, the cited line that contradicts `docs/api.md`, and
+the dependency graph, in about a minute.
+
+### Step 4 — use it on your own code
+
+Restart opencode, open your project, and ask:
+
+> Checkout throws a 500 since Tuesday. `POST /api/orders` fails only for orders
+> with more than three line items. Find out why and fix it.
+
+If the skill does not trigger, name it: *"Use the codebase-detective skill to
+investigate this."*
+
+### Uninstall
+
+```bash
+rm -rf ~/.config/opencode/skills/codebase-detective
+```
+
+Nothing is ever written to your projects.
 
 ## What is in the box
 
@@ -87,7 +156,7 @@ templates/
   report.md                the investigation report deliverable
   example-report.md        a filled-in example (scores 100% on the rubric)
 tests/
-  test_detective.py        31 tests over every script
+  test_detective.py        38 tests over every script
   fixture_repo/            a deliberately broken project: 3 planted cross-file bugs
   BUGS.md                  ground truth for the planted bugs
 evals/
@@ -95,6 +164,10 @@ evals/
   run_evals.sh             5 scenarios, staged automatically, then scored
   score_report.py          scores a report against the rules
   score_transcript.py      scores what the agent did, and in what order
+docs/
+  getting-started.md       step-by-step install, verify, practise, uninstall
+  extension.md             why agents get investigations wrong (the long read)
+  profile.md               short copy for a GitHub profile
 ```
 
 ## The tools
@@ -124,8 +197,11 @@ this by hashing the fixture before and after a full tool run.
 git clone https://github.com/marselmarselyt-png/codebase-detective.git
 cd codebase-detective
 python3 scripts/map_project.py --root tests/fixture_repo
-python3 scripts/trace_symbol.py --root tests/fixture_repo --symbol Customer
+python3 scripts/test_probe.py --root tests/fixture_repo --run \
+  --cmd "python3 -m unittest discover -s tests -t ."
+python3 scripts/trace_symbol.py --root tests/fixture_repo --symbol TIER_FIELD
 python3 scripts/impact.py --root tests/fixture_repo --files shopcart/api.py
+cat tests/BUGS.md
 ```
 
 The fixture is a four-layer order pipeline with three planted bugs:
@@ -136,12 +212,19 @@ The fixture is a four-layer order pipeline with three planted bugs:
 2. A mutable default argument that leaks reservations between unrelated orders.
 3. A boolean read as an object in JavaScript, rejecting valid tokens.
 
-`tests/BUGS.md` holds the ground truth.
+`tests/BUGS.md` holds the ground truth, including the exact evidence trail the
+tools should produce.
 
 ## Run the tests
 
 ```bash
 python3 -m unittest discover -s tests -t . -v
+```
+
+```
+Ran 38 tests in 35.3s
+
+OK
 ```
 
 The suite covers every script and, crucially, applies the documented fixes to a

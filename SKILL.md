@@ -167,6 +167,8 @@ invented one — write `UNKNOWN` and say what is needed to resolve it.
 
 ## Reference material
 
+- `docs/getting-started.md` — step-by-step install, verification, and a first
+  run on the bundled broken project.
 - `references/workflow.md` — phase-by-phase detail, including how to read a stack
   trace and how to bound a scan in a large repository.
 - `references/patterns.md` — catalogue of cross-file root causes with detection
@@ -177,6 +179,7 @@ invented one — write `UNKNOWN` and say what is needed to resolve it.
   how to report results without overclaiming.
 - `references/impact.md` — dependency graph, blast-radius tiers, and review
   checklists.
-- `templates/report.md` — the deliverable format.
+- `templates/report.md` — the deliverable format;
+  `templates/example-report.md` — a filled-in example.
 - `tests/fixture_repo/` — a deliberately broken project with a cross-file bug
   and a regression test, used by the test suite and evals.

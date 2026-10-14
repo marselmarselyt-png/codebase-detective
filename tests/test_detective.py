@@ -22,6 +22,9 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCRIPTS = os.path.join(REPO, "scripts")
 FIXTURE = os.path.join(REPO, "tests", "fixture_repo")
 
+sys.path.insert(0, SCRIPTS)
+from _common import strip_comments_python as strip  # noqa: E402
+
 # the two planted fixes, applied to a temp copy to prove the regression tests
 # turn green and nothing else breaks.
 FIXES = {
@@ -216,6 +219,43 @@ class TraceSymbolTests(unittest.TestCase):
             self.assertTrue(any("DUPLICATE DEFINITION" in w for w in trace["warnings"]))
         finally:
             shutil.rmtree(os.path.dirname(root), ignore_errors=True)
+
+    def test_quotes_the_source_line_verbatim(self):
+        """Regression: string contents were dropped when stripping comments."""
+        trace = script_json("trace_symbol.py", "--root", FIXTURE, "--symbol", "TIER_FIELD", "--json")
+        quote = trace["definitions"][0]["quote"]
+        self.assertIn('"customerTier"', quote,
+                      f"the cited line must be quoted intact, got {quote!r}")
+
+    def test_detect_tests_does_not_assume_pytest(self):
+        data = script_json("map_project.py", "--root", FIXTURE, "--json")
+        joined = " ".join(data["tests"]["frameworks"])
+        self.assertIn("unittest", joined)
+        self.assertNotIn("pytest (assumed", joined)
+
+
+# ------------------------------------------------------- shared parsing helpers
+class StripCommentsTests(unittest.TestCase):
+    """A regression suite for python comment stripping.
+
+    Dropping string contents silently corrupted every quoted line the tools
+    reported as evidence, so each case below is load bearing.
+    """
+
+    def test_keeps_string_contents(self):
+        self.assertEqual(strip('TIER_FIELD = "customerTier"'), 'TIER_FIELD = "customerTier"')
+
+    def test_removes_trailing_comment(self):
+        self.assertEqual(strip("x = 1  # comment"), "x = 1  ")
+
+    def test_hash_inside_a_string_is_not_a_comment(self):
+        self.assertEqual(strip('s = "has # hash"  # real'), 's = "has # hash"  ')
+
+    def test_escaped_quote_inside_a_string(self):
+        self.assertEqual(strip("s = 'it\\'s'  # c"), "s = 'it\\'s'  ")
+
+    def test_url_with_fragment_is_intact(self):
+        self.assertEqual(strip('u = "https://x.dev/a#b"'), 'u = "https://x.dev/a#b"')
 
 
 # ---------------------------------------------------------------- phase 7

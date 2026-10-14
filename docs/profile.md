@@ -10,13 +10,58 @@ It **maps an unfamiliar repository**, **traces root causes across files**,
 exist**, and **reports what it knows — and what it does not**, with a confidence
 level and real exit codes.
 
-- Python 3 standard library only. No `pip install`. Nothing added to your repo.
-- Works with opencode, Claude Code, and any agent that loads a `SKILL.md`.
-- 31 automated tests over every script, plus a deliberately broken fixture
-  project with three planted cross-file bugs.
+Python 3 standard library only. No `pip install`. Nothing added to your repo.
+
+---
+
+## Install
+
+**opencode, all projects**
+
+```bash
+git clone https://github.com/marselmarselyt-png/codebase-detective.git \
+  ~/.config/opencode/skills/codebase-detective
+```
+
+**opencode, one project**
+
+```bash
+cd /path/to/your/project
+git clone https://github.com/marselmarselyt-png/codebase-detective.git \
+  .opencode/skills/codebase-detective
+```
+
+**Claude Code**
+
+```bash
+git clone https://github.com/marselmarselyt-png/codebase-detective.git \
+  ~/.claude/skills/codebase-detective
+```
+
+No git? Download the zip, extract it, rename the folder to
+`codebase-detective`. Any other agent: point it at `SKILL.md`.
+
+**Requirements:** Python 3.9+. Nothing else.
+
+## Try it
+
+```bash
+cd ~/.config/opencode/skills/codebase-detective
+python3 scripts/map_project.py --root tests/fixture_repo
+```
+
+Restart opencode, open your project, and ask:
+
+> Checkout throws a 500 since Tuesday. `POST /api/orders` fails only for orders
+> with more than three line items. Find out why and fix it.
+
+Full walkthrough with real terminal output:
+**[docs/getting-started.md](https://github.com/marselmarselyt-png/codebase-detective/blob/main/docs/getting-started.md)**
+
+---
 
 **MIT licensed.** Contributions and bug reports welcome — see
-[Contributing](#contributing).
+[Contributing](https://github.com/marselmarselyt-png/codebase-detective#contributing).
 
-[Read the longer essay →](docs/extension.md) on why agents get investigations
-wrong and what this skill does differently.
+[The longer essay →](docs/extension.md) on why agents get investigations wrong
+and what this skill does differently.

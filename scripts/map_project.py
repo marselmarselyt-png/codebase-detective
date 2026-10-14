@@ -61,6 +61,8 @@ def detect_entry_points(root: str, files: list[str]) -> list[dict]:
     for rel in files:
         base = os.path.basename(rel)
         dialect = dialect_of(rel)
+        if is_test_path(rel, root):
+            continue  # a test file with a main guard is not an entry point
         try:
             head = read_text(os.path.join(root, rel))[:4000]
         except OSError:
@@ -70,8 +72,7 @@ def detect_entry_points(root: str, files: list[str]) -> list[dict]:
         elif re.search(r"^\s*if\s+__name__", head, re.M):
             entries.append({"kind": "python entry", "name": base, "location": rel})
         if base in ("main.go", "main.rs", "main.py", "server.js", "server.ts", "app.py", "index.js", "index.ts", "main.ts"):
-            if not is_test_path(rel, root):
-                entries.append({"kind": "conventional entry", "name": base, "location": rel})
+            entries.append({"kind": "conventional entry", "name": base, "location": rel})
         if dialect in ("go", "rust") and base == "main":
             entries.append({"kind": f"{dialect} binary", "name": base, "location": rel})
     return entries[:40]
@@ -83,8 +84,18 @@ def detect_tests(root: str, files: list[str]) -> dict:
     for f in test_files:
         lang = language_of(f) or "other"
         info["by_language"][lang] = info["by_language"].get(lang, 0) + 1
-    if "Python" in info["by_language"] or os.path.isfile(os.path.join(root, "pytest.ini")):
-        info["frameworks"].append("pytest (assumed: python test files found)")
+    py_tests = [f for f in test_files if f.endswith((".py", ".pyi"))]
+    if py_tests:
+        uses_unittest = any(
+            "unittest" in read_text(os.path.join(root, f)) for f in py_tests
+        )
+        has_pytest_cfg = any(
+            os.path.isfile(os.path.join(root, n)) for n in ("pytest.ini", "pyproject.toml", "setup.cfg", "tox.ini")
+        )
+        if uses_unittest and not has_pytest_cfg:
+            info["frameworks"].append("unittest (unittest.TestCase found, no pytest config)")
+        else:
+            info["frameworks"].append("pytest (assumed: python test files found)")
     if "JavaScript" in info["by_language"] or "TypeScript" in info["by_language"]:
         pkg = os.path.join(root, "package.json")
         if os.path.isfile(pkg):
@@ -147,6 +158,7 @@ def folder_layout(root: str, files: list[str], depth: int) -> dict:
         else:
             key = "/".join(rel.split("/")[:-1][:depth])
         lang = language_of(rel)
+        tree[key]["files"] += 1
         if lang:
             tree[key]["languages"][lang] += 1
         if is_test_path(rel, root):

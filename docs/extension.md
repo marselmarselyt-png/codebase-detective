@@ -88,12 +88,27 @@ mechanical checks from judgement.
 
 ## Try it against a real bug
 
+Full walkthrough with real terminal output:
+**[getting-started.md](getting-started.md)**
+
+In short:
+
 ```bash
+# 1. install
 git clone https://github.com/marselmarselyt-png/codebase-detective.git \
   ~/.config/opencode/skills/codebase-detective
+
+# 2. restart opencode
+
+# 3. practise on the bundled broken project
+cd ~/.config/opencode/skills/codebase-detective
+python3 scripts/map_project.py  --root tests/fixture_repo
+python3 scripts/trace_symbol.py --root tests/fixture_repo --symbol TIER_FIELD
+
+# 4. run it on your own code: open your project and ask for an investigation
 ```
 
-Restart opencode, then ask for an investigation. The tools work standalone too:
+The tools work standalone too:
 
 ```bash
 python3 scripts/map_project.py  --root .

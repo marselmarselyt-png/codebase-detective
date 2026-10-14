@@ -63,8 +63,21 @@ def detect_suites(root: str, files: list[str]) -> list[dict]:
 
     py_files = [f for f in files if f.endswith(".py")]
     py_tests = [f for f in py_files if is_test_path(f, root)]
-    if py_tests and (has("pytest.ini") or has("pyproject.toml") or has("setup.cfg") or py_tests):
-        suites.append({"framework": "pytest", "cmd": "python3 -m pytest -q", "confidence": "high"})
+    if py_tests:
+        pytest_cfg = has("pytest.ini") or has("setup.cfg") or (
+            has("pyproject.toml") and "[tool.pytest" in read_text(os.path.join(root, "pyproject.toml"))
+        )
+        pytest_installed = module_available("pytest")
+        if pytest_cfg or pytest_installed:
+            suites.append({"framework": "pytest", "cmd": "python3 -m pytest -q", "confidence": "high"})
+        else:
+            suites.append({
+                "framework": "unittest",
+                "cmd": "python3 -m unittest discover -q",
+                "confidence": "high",
+                "note": "pytest config absent and pytest is not installed in this environment"
+                if not pytest_cfg else "pytest config absent",
+            })
 
     if has("Cargo.toml"):
         suites.append({"framework": "cargo", "cmd": "cargo test", "confidence": "high"})
@@ -77,16 +90,24 @@ def detect_suites(root: str, files: list[str]) -> list[dict]:
     if has("mix.exs"):
         suites.append({"framework": "exunit", "cmd": "mix test", "confidence": "medium"})
 
-    if not suites and py_tests:
-        suites.append(
-            {
-                "framework": "unittest",
-                "cmd": "python3 -m unittest discover -q",
-                "confidence": "medium",
-                "note": "no pytest config found",
-            }
-        )
     return suites
+
+
+def module_available(name: str) -> bool:
+    """True if `python3 -m <name>` would actually import.
+
+    Without this check the probe would happily run `python3 -m pytest` on a
+    machine with no pytest and report the resulting ModuleNotFoundError as a
+    test failure. That is exactly the kind of invented result this skill exists
+    to prevent.
+    """
+    try:
+        return subprocess.run(
+            [sys.executable, "-c", f"import {name}"],
+            capture_output=True, timeout=20,
+        ).returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
 
 
 def run_command(cmd: str, root: str, timeout: int) -> dict:

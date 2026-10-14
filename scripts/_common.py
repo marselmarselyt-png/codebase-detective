@@ -200,16 +200,19 @@ _EXPORT_PATTERNS: dict[str, list[re.Pattern[str]]] = {
 
 
 def strip_comments_python(line: str) -> str:
+    """Remove `#` comments while keeping string literals intact."""
     out, in_s, q = [], False, ""
     i = 0
     while i < len(line):
         c = line[i]
         if in_s:
-            if c == "\\":
+            if c == "\\" and i + 1 < len(line):
+                out.append(line[i : i + 2])
                 i += 2
                 continue
             if c == q:
                 in_s = False
+            out.append(c)
             i += 1
             continue
         if c in "\"'":
