@@ -1,0 +1,10 @@
+{
+  "name": "fixture-web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "JavaScript twin of the fixture_repo bug, used to test cross-language tracing.",
+  "scripts": {
+    "test": "node src/api.test.js"
+  }
+}

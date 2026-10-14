@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.detective-snapshot.json
+baseline.json
+*.json.bak
+.DS_Store
+evals/runs/
+.venv/
+venv/
+node_modules/
+.idea/
+.vscode/
