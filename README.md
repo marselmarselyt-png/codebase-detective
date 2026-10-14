@@ -7,55 +7,57 @@ guess-driven code editor. It maps an unfamiliar repository, traces root causes
 across files, analyses the blast radius of a change, runs the tests that
 actually exist, and reports what it knows — and what it does not.
 
-Built for opencode, Claude Code, and any other agent that can load a
-`SKILL.md`.
+Works with opencode, Claude Code, and any agent that can load a `SKILL.md`.
+Python 3 standard library only — no `pip install`, nothing added to your repo.
 
 ---
 
-## The problem
+## Why this exists
 
 Coding agents fail in a predictable way: they see a stack trace, form a
-hypothesis in the first thirty seconds, and start editing. The edit is usually
-plausible. Sometimes it is even correct. But nothing in the transcript tells you
+hypothesis within thirty seconds, and start editing. The edit is usually
+plausible. Sometimes it is even correct. But nothing in the transcript shows
 whether the agent understood the system, whether the change breaks something
-else, or whether the tests were ever run.
+else, or whether the tests were ever run — and the failure is invisible, because
+a confident summary reads exactly like a correct one.
 
-Worse, the failure is invisible: a confident summary at the end reads exactly
-like a correct one.
+This skill inverts the order of operations and makes the reasoning auditable.
 
-## The approach
+## The six rules
 
-Codebase Detective inverts the order of operations and makes the reasoning
-auditable:
+| # | Rule |
+|---|------|
+| 1 | **No edit before investigation.** No code change until a root-cause hypothesis with evidence and an impact assessment exist. |
+| 2 | **Every diagnosis cites `file:line`.** No citation means the claim is labelled a guess. |
+| 3 | **The user's work is protected.** Snapshot before editing, verify after, never revert what you did not write. |
+| 4 | **Tests are run or not claimed.** Real command, real exit code. "Should pass" is not evidence. |
+| 5 | **Uncertainty is reported.** `CAUSE NOT FOUND` with a hypothesis table is a valid outcome. |
+| 6 | **Risky actions need approval.** Deletions, public API changes, migrations, dependency bumps, disabling tests. |
 
-1. **No edit before investigation.** You may not modify code until you have
-   written down a root-cause hypothesis with evidence and an impact assessment.
-2. **Every diagnosis cites `file:line`.** A conclusion without a citation is
-   labelled a guess.
-3. **The user's work is protected.** Snapshot before editing, verify after, never
-   revert what you did not write.
-4. **Tests are run or not claimed.** Real command, real exit code. "Should pass"
-   is not evidence.
-5. **Uncertainty is reported.** `CAUSE NOT FOUND` with a hypothesis table is a
-   valid, valuable outcome.
-6. **Risky actions need approval.** Deleting files, changing public APIs,
-   migrations, dependency bumps, disabling tests.
+## The eight phases
+
+```
+Scan project -> Map dependencies -> Investigate bug -> Analyse risk
+             -> Plan the change  -> Edit code     -> Run tests -> Report
+```
 
 ## Install
 
-### opencode
+**opencode**
 
 ```bash
-git clone <this-repo> ~/.config/opencode/skills/codebase-detective
+git clone https://github.com/marselmarselyt-png/codebase-detective.git \
+  ~/.config/opencode/skills/codebase-detective
 ```
 
-or copy the directory to `.opencode/skills/codebase-detective` in a project for
-project-scoped use. Restart opencode to pick it up.
+Or copy the folder to `.opencode/skills/codebase-detective` in a project for
+project-scoped use. Restart opencode to load it.
 
-### Claude Code / agents.md-compatible runners
+**Claude Code**
 
 ```bash
-git clone <this-repo> ~/.claude/skills/codebase-detective
+git clone https://github.com/marselmarselyt-png/codebase-detective.git \
+  ~/.claude/skills/codebase-detective
 ```
 
 ## Use
@@ -65,59 +67,76 @@ Ask for an investigation, or invoke the skill explicitly:
 > "Gold customers stopped receiving their 5% discount. A `POST /checkout` with
 > `"tier": "gold"` comes back as `STANDARD`. Investigate."
 
-The skill then runs eight phases:
+## What is in the box
 
 ```
-Scan project -> Map dependencies -> Investigate bug -> Analyse risk
-             -> Plan the change  -> Edit code     -> Run tests -> Report
-```
-
-## What ships in the box
-
-```
-SKILL.md                   the rules and the workflow
+SKILL.md                   rules + the 8-phase workflow the agent follows
 scripts/
-  map_project.py           phase 1 - project map, entry points, test setup
-  impact.py                phases 2 & 4 - dependency graph, hotspots, blast radius
+  map_project.py           phase 1 - languages, layout, entry points, test setup, dirty tree
+  impact.py                phases 2 & 4 - dependency graph, hotspots, blast radius, risk tier
   trace_symbol.py          phase 3 - cross-file symbol and file tracing
-  snapshot.py              guards the user's pre-existing changes
-  test_probe.py            phase 7 - real test discovery, real exit codes, baselines
+  snapshot.py              guards your pre-existing changes (hash before, verify after)
+  test_probe.py            phase 7 - real test discovery, real exit codes, baseline comparison
 references/
   workflow.md              each phase in detail
-  patterns.md              cross-file root cause catalogue (7 patterns + anti-patterns)
-  evidence.md              evidence standards and the confidence rubric
-  testing.md               test discovery per stack, honest reporting
-  impact.md                risk tiers and review checklists
+  patterns.md              7 cross-file root cause patterns + the anti-patterns
+  evidence.md              evidence standards, confidence rubric, phrasing
+  testing.md               discovery per stack, honest reporting, anti-patterns
+  impact.md                risk tiers, where to fix, review checklist
 templates/
   report.md                the investigation report deliverable
+  example-report.md        a filled-in example (scores 100% on the rubric)
 tests/
-  test_detective.py        31 tests covering every script, incl. fix-and-verify
-  fixture_repo/            a deliberately broken project (3 planted bugs)
-  BUGS.md                  grader's ground truth
+  test_detective.py        31 tests over every script
+  fixture_repo/            a deliberately broken project: 3 planted cross-file bugs
+  BUGS.md                  ground truth for the planted bugs
 evals/
-  RUN.md                   how to test the skill on a real agent
-  run_evals.sh             harness: 5 cases, stages a clean fixture, scores the run
-  score_report.py          scores a report against the skill's rules
-  score_transcript.py      scores what the agent did, in order
+  RUN.md                   how to test the skill on a real coding agent
+  run_evals.sh             5 scenarios, staged automatically, then scored
+  score_report.py          scores a report against the rules
+  score_transcript.py      scores what the agent did, and in what order
 ```
 
-All scripts are **Python 3 standard library only**. No pip install, no node
-install. They run inside any target repository without touching it.
-
-## Try the tools on the broken fixture
+## The tools
 
 ```bash
-git clone <this-repo> && cd codebase-detective
+# what is this project, and what can I run?
+python3 scripts/map_project.py --root .
 
+# where does this symbol come from and who uses it?
+python3 scripts/trace_symbol.py --root . --symbol apply_discount
+python3 scripts/trace_symbol.py --root . --file src/checkout.ts --importers
+
+# what breaks if I change these files?
+python3 scripts/impact.py --root . --files src/pricing.py src/cart.py
+
+# did the tests actually pass? (real exit code, never a guess)
+python3 scripts/test_probe.py --root . --run --baseline before.json
+python3 scripts/test_probe.py --root . --run --compare  before.json
+```
+
+All scripts read the target repository and never write to it. A test asserts
+this by hashing the fixture before and after a full tool run.
+
+## Try it on the broken fixture
+
+```bash
+git clone https://github.com/marselmarselyt-png/codebase-detective.git
+cd codebase-detective
 python3 scripts/map_project.py --root tests/fixture_repo
 python3 scripts/trace_symbol.py --root tests/fixture_repo --symbol Customer
 python3 scripts/impact.py --root tests/fixture_repo --files shopcart/api.py
 ```
 
-The fixture is a four-layer order pipeline with three planted bugs: a field name
-that drifts between the HTTP contract and the parser, a mutable default argument
-that leaks reservations between orders, and a boolean read as an object in
-JavaScript. `tests/BUGS.md` has the ground truth.
+The fixture is a four-layer order pipeline with three planted bugs:
+
+1. A field name that drifts between the HTTP contract and the parser — the
+   discount is silently lost, and a green unit suite hides it because the tests
+   never enter the transport layer.
+2. A mutable default argument that leaks reservations between unrelated orders.
+3. A boolean read as an object in JavaScript, rejecting valid tokens.
+
+`tests/BUGS.md` holds the ground truth.
 
 ## Run the tests
 
@@ -125,28 +144,32 @@ JavaScript. `tests/BUGS.md` has the ground truth.
 python3 -m unittest discover -s tests -t . -v
 ```
 
-The suite verifies the tools against the fixture *and* applies the documented
-fixes to a temporary copy, proving that the regression tests turn green — and
-that a plausible-but-wrong fix does not.
+The suite covers every script and, crucially, applies the documented fixes to a
+temporary copy of the fixture — proving the regression tests turn green **and**
+that a plausible-but-wrong fix is rejected.
 
 ## Evaluate the skill itself
 
-Scripts being correct does not mean agents behave correctly. `evals/` runs five
-scenarios against a real agent session and scores the transcript:
+Scripts being correct does not mean agents behave correctly.
 
 ```bash
 AGENT_CMD="opencode run --prompt-file -" ./evals/run_evals.sh
 ```
 
-Case 4 is the important one: an intermittent failure with no available
-evidence. The correct behaviour is to report `CAUSE NOT FOUND` with a hypothesis
-table. An agent that invents a confident cause fails the skill even if it sounds
+Case 4 is the one that matters: an intermittent failure with no available
+evidence. The correct result is `CAUSE NOT FOUND` plus a hypothesis table. An
+agent that invents a confident cause fails the skill even if it sounds
 persuasive.
 
 ## Requirements
 
-Python 3.9+. Nothing else. `node` is optional and only used by one JavaScript
-test.
+Python 3.9+. Nothing else. `node` is optional and used by one JavaScript test.
+
+## Contributing
+
+Open an issue describing a root-cause pattern the detective misses, or a case
+where it edited before investigating. Bug reports about the tools themselves
+welcome a failing test.
 
 ## License
 
